@@ -10,89 +10,62 @@ import SourceKittenFramework
 
 public struct SwiftUnused {
     public var declarations: Set<USR> {
-        return Set(syntaxMap.tokens.compactMap { usrForTokenAt($0.offset, declaration: true) })
+        return usrs(index, declarations: true)
     }
 
     public var usages: Set<USR> {
-        return Set(syntaxMap.tokens
-            .filter {
-                $0.type == SyntaxKind.identifier.rawValue ||
-                $0.type == SyntaxKind.typeidentifier.rawValue
-            }
-            .compactMap {
-                usrForTokenAt($0.offset, declaration: false)
-            })
+        return usrs(index, declarations: false)
     }
 
-    private let file: File
     private let path: String
-    private let arguments: [String]
-    private let syntaxMap: SyntaxMap
+    private let index: [String: SourceKitRepresentable]
 
     public init?(path: String, arguments: [String]? = nil) {
-        guard let file = File(path: path) else {
+        let arguments = arguments ?? [
+            "-target", "arm64-apple-ios12.1",
+            "-sdk", "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS12.1.sdk",
+            "-j4", path
+        ]
+
+        guard let index = try? Request.index(file: path, arguments: arguments).send() else {
             return nil
         }
 
-        do {
-            syntaxMap = try SyntaxMap(file: file)
-        } catch {
-            return nil
-        }
-
-        self.file = file
         self.path = path
-        self.arguments = arguments ?? ["-sdk", sdkPath(), "-j4", path]
+        self.index = index
     }
 
-    private func usrForTokenAt(_ offset: Int, declaration: Bool) -> USR? {
-        do {
-            let cursorInfo = try Request.cursorInfo(file: path, offset: Int64(offset), arguments: arguments).send()
+    private func usrs(_ index: [String: SourceKitRepresentable], declarations: Bool) -> Set<USR> {
+        var result = Set<USR>()
 
-            guard
-                let kind = cursorInfo[CursorInfoKey.kind.rawValue] as? String,
-                (SwiftDeclarationKind(rawValue: kind) != nil) == declaration,
-                !declaration || isDeclarationProcessable(cursorInfo)
-            else {
-                return nil
+        if let entities = index[IndexRequestKey.entities.rawValue] as? [[String: SourceKitRepresentable]] {
+            result = entities.reduce(Set<USR>()) { result, index in
+                return result.union(usrs(index, declarations: declarations))
             }
-
-            guard
-                let usr = cursorInfo[CursorInfoKey.usr.rawValue] as? String,
-                let name = cursorInfo[CursorInfoKey.name.rawValue] as? String,
-                let (line, column) = (file.contents as NSString).lineAndCharacter(forByteOffset: offset)
-            else {
-                return nil
-            }
-
-            return USR(usr: usr, name: name, file: path, line: line, column: column)
-        } catch {
-            return nil
         }
-    }
 
-    private func isDeclarationProcessable(_ cursorInfo: [String: SourceKitRepresentable]) -> Bool {
         guard
-            let kind = cursorInfo[CursorInfoKey.kind.rawValue] as? String,
-            let declarationKind = SwiftDeclarationKind(rawValue: kind),
-            declarationKind != .enumelement
+            let kind = index[IndexRequestKey.kind.rawValue] as? String,
+            (SwiftDeclarationKind(rawValue: kind) != nil) == declarations
         else {
-            return false
+            return result
         }
 
-        if let fullyAnnotatedDeclaration = cursorInfo[CursorInfoKey.fullyAnnotatedDeclaration.rawValue] as? String,
-            [
-                "<syntaxtype.attribute.name>@IBOutlet</syntaxtype.attribute.name>",
-                "<syntaxtype.attribute.name>@IBAction</syntaxtype.attribute.name>",
-                "<syntaxtype.attribute.name>@objc</syntaxtype.attribute.name>",
-                "<syntaxtype.keyword>override</syntaxtype.keyword>",
-                "<syntaxtype.keyword>public</syntaxtype.keyword>",
-            ].contains(where: fullyAnnotatedDeclaration.contains)
-        {
-            return false
+        guard !declarations || SwiftDeclarationKind(rawValue: kind) != .enumelement else {
+            return result
         }
 
-        return true
+        guard
+            let usr = index[IndexRequestKey.usr.rawValue] as? String,
+            let name = index[IndexRequestKey.name.rawValue] as? String,
+            let line = index[IndexRequestKey.line.rawValue] as? Int64,
+            let column = index[IndexRequestKey.column.rawValue] as? Int64
+        else {
+            return result
+        }
+
+        result.insert(USR(usr: usr, name: name, file: path, line: line, column: column))
+        return result
     }
 }
 
@@ -100,8 +73,8 @@ public struct USR: Hashable {
     public let usr: String
     public let name: String
     public let file: String
-    public let line: Int
-    public let column: Int
+    public let line: Int64
+    public let column: Int64
 
     public var hashValue: Int {
         return usr.hashValue
@@ -112,10 +85,11 @@ public struct USR: Hashable {
     }
 }
 
-private enum CursorInfoKey: String {
-    case name = "key.name"
+private enum IndexRequestKey: String {
     case kind = "key.kind"
     case usr = "key.usr"
-    case overrides = "key.overrides"
-    case fullyAnnotatedDeclaration = "key.fully_annotated_decl"
+    case name = "key.name"
+    case line = "key.line"
+    case column = "key.column"
+    case entities = "key.entities"
 }

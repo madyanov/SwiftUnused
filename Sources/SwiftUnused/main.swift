@@ -51,7 +51,7 @@ while let path = enumerator?.nextObject() as? String {
 print()
 
 for declaration in declarations where !usages.contains(declaration) {
-    print("Unused declaration \"\(declaration.name)\" in \(declaration.file):\(declaration.line)")
+    print("Unused declaration \"\(declaration.name)\" \"\(declaration.usr)\" in \(declaration.file):\(declaration.line)")
 }
 
 // test
