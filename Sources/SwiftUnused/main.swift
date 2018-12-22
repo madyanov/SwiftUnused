@@ -5,6 +5,12 @@
 //  Created by Roman Madyanov on 22/12/2018.
 //
 
+#if os(Linux)
+    import Glibc
+#else
+    import Darwin.C
+#endif
+
 import Foundation
 import SwiftUnusedFramework
 
@@ -29,6 +35,7 @@ while let path = enumerator?.nextObject() as? String {
     }
 
     print("Processing file \(path)... ", terminator: "")
+    fflush(stdout)
 
     guard let swiftUnused = SwiftUnused(path: url.absoluteString) else {
         print("error")
