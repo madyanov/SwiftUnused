@@ -14,6 +14,13 @@
 import Foundation
 import SwiftUnusedFramework
 
+let arguments = [
+    "-target", "arm64-apple-ios12.1",
+    "-sdk", "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS12.1.sdk",
+    "-j4",
+    // paths
+]
+
 let fileManager = FileManager.default
 
 guard let baseURL = URL(string: fileManager.currentDirectoryPath)?
@@ -22,10 +29,8 @@ else {
     exit(1)
 }
 
+var paths = [String]()
 let enumerator = fileManager.enumerator(atPath: baseURL.absoluteString)
-
-var declarations = Set<USR>()
-var usages = Set<USR>()
 
 while let path = enumerator?.nextObject() as? String {
     let url = baseURL.appendingPathComponent(path)
@@ -34,24 +39,30 @@ while let path = enumerator?.nextObject() as? String {
         continue
     }
 
-    print("Processing file \(path)... ", terminator: "")
-    fflush(stdout)
+    paths.append(url.absoluteString)
+}
 
-    guard let swiftUnused = SwiftUnused(path: url.absoluteString) else {
-        print("error")
+var allDeclarations = Set<Declaration>()
+var allUsages = Set<Usage>()
+
+for path in paths {
+    guard let swiftUnused = SwiftUnused(path: path, arguments: arguments + paths) else {
         continue
     }
 
-    declarations = declarations.union(swiftUnused.declarations)
-    usages = usages.union(swiftUnused.usages)
-
-    print("done")
+    let (declarations, usages) = swiftUnused.declarationsAndUsages
+    allDeclarations = allDeclarations.union(declarations)
+    allUsages = allUsages.union(usages)
 }
 
 print()
 
-for declaration in declarations where !usages.contains(declaration) {
-    print("Unused declaration \"\(declaration.name)\" \"\(declaration.usr)\" in \(declaration.file):\(declaration.line)")
+outerLoop: for declaration in allDeclarations {
+    for usage in allUsages where declaration.usr == usage.usr || declaration.typeUSR == usage.typeUSR {
+        continue outerLoop
+    }
+
+    print("Unused declaration \"\(declaration.name)\" in \(declaration.file):\(declaration.line)")
 }
 
 // test
