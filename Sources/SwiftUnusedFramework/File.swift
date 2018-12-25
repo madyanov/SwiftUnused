@@ -73,6 +73,8 @@ public struct File {
     }
 
     private func isDeclarationProcessable(_ cursorInfo: [String: SourceKitRepresentable]) -> Bool {
+        // TODO: should skip protocol methods & public extension methods
+
         // skip outlets, actions, overrides, public & open declarations
         if let fullyAnnotatedDeclaration = cursorInfo.fullyAnnotatedDeclaration,
             [
