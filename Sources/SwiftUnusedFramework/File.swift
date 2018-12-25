@@ -14,6 +14,7 @@ public struct File {
     public var declarationsAndUsages: (declarations: Set<Declaration>, usages: Set<Usage>) {
         var declarations = Set<Declaration>()
         var usages = Set<Usage>()
+        var protocols = Set<String>()
 
         for token in syntaxMap.tokens {
             guard let cursorInfo = try? Request.cursorInfo(
@@ -34,8 +35,12 @@ public struct File {
                 continue
             }
 
-            if SwiftDeclarationKind(rawValue: kind) != nil {
-                guard isDeclarationProcessable(cursorInfo) else {
+            if let declarationKind = SwiftDeclarationKind(rawValue: kind) {
+                if declarationKind == .protocol {
+                    protocols.insert(name)
+                }
+
+                guard isDeclarationProcessable(cursorInfo, protocols: protocols) else {
                     continue
                 }
 
@@ -72,9 +77,7 @@ public struct File {
         self.syntaxMap = syntaxMap
     }
 
-    private func isDeclarationProcessable(_ cursorInfo: [String: SourceKitRepresentable]) -> Bool {
-        // TODO: should skip protocol members & members inside public extensions
-
+    private func isDeclarationProcessable(_ cursorInfo: [String: SourceKitRepresentable], protocols: Set<String>) -> Bool {
         // skip outlets, actions, overrides, public & open declarations
         if let fullyAnnotatedDeclaration = cursorInfo.fullyAnnotatedDeclaration,
             [
@@ -88,7 +91,20 @@ public struct File {
             return false
         }
 
+        // skip protocol members
+        if let name = cursorInfo.name, !protocols.contains(name) {
+            for `protocol` in protocols where isProtocolMemberUSR(cursorInfo.usr, protocol: `protocol`) {
+                return false
+            }
+        }
+
+        // TODO: skip members inside public extensions
+
         return true
+    }
+
+    private func isProtocolMemberUSR(_ usr: String?, protocol: String) -> Bool {
+        return usr?.range(of: "\\d\(`protocol`)P\\d", options: .regularExpression) != nil
     }
 }
 
