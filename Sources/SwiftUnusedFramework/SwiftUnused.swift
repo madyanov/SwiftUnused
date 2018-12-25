@@ -33,14 +33,7 @@ public struct SwiftUnused {
             }
 
             if SwiftDeclarationKind(rawValue: kind) != nil {
-                if let fullyAnnotatedDeclaration = cursorInfo.fullyAnnotatedDeclaration,
-                    [
-                        "<syntaxtype.attribute.name>@IBOutlet</syntaxtype.attribute.name>",
-                        "<syntaxtype.attribute.name>@IBAction</syntaxtype.attribute.name>",
-                        "<syntaxtype.keyword>override</syntaxtype.keyword>",
-                        "<syntaxtype.keyword>public</syntaxtype.keyword>",
-                    ].contains(where: fullyAnnotatedDeclaration.contains)
-                {
+                guard isDeclarationProcessable(cursorInfo) else {
                     continue
                 }
 
@@ -74,6 +67,22 @@ public struct SwiftUnused {
         self.arguments = arguments
         self.file = file
         self.syntaxMap = syntaxMap
+    }
+
+    private func isDeclarationProcessable(_ cursorInfo: [String: SourceKitRepresentable]) -> Bool {
+        // skip outlets, actions, overrides & public declarations
+        if let fullyAnnotatedDeclaration = cursorInfo.fullyAnnotatedDeclaration,
+            [
+                "<syntaxtype.attribute.name>@IBOutlet</syntaxtype.attribute.name>",
+                "<syntaxtype.attribute.name>@IBAction</syntaxtype.attribute.name>",
+                "<syntaxtype.keyword>override</syntaxtype.keyword>",
+                "<syntaxtype.keyword>public</syntaxtype.keyword>",
+            ].contains(where: fullyAnnotatedDeclaration.contains)
+        {
+            return false
+        }
+
+        return true
     }
 }
 
