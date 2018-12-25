@@ -46,9 +46,15 @@ var allDeclarations = Set<Declaration>()
 var allUsages = Set<Usage>()
 
 for path in paths {
+    print("Processing file \(path)... ", terminator: "")
+    fflush(stdout)
+
     guard let swiftUnused = SwiftUnused(path: path, arguments: arguments + paths) else {
+        print("error")
         continue
     }
+
+    print("done")
 
     let (declarations, usages) = swiftUnused.declarationsAndUsages
     allDeclarations = allDeclarations.union(declarations)

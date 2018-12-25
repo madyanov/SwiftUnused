@@ -70,13 +70,14 @@ public struct SwiftUnused {
     }
 
     private func isDeclarationProcessable(_ cursorInfo: [String: SourceKitRepresentable]) -> Bool {
-        // skip outlets, actions, overrides & public declarations
+        // skip outlets, actions, overrides, public & open declarations
         if let fullyAnnotatedDeclaration = cursorInfo.fullyAnnotatedDeclaration,
             [
                 "<syntaxtype.attribute.name>@IBOutlet</syntaxtype.attribute.name>",
                 "<syntaxtype.attribute.name>@IBAction</syntaxtype.attribute.name>",
                 "<syntaxtype.keyword>override</syntaxtype.keyword>",
                 "<syntaxtype.keyword>public</syntaxtype.keyword>",
+                "<syntaxtype.keyword>open</syntaxtype.keyword>",
             ].contains(where: fullyAnnotatedDeclaration.contains)
         {
             return false
