@@ -64,7 +64,7 @@ for path in paths {
 print()
 
 outerLoop: for declaration in allDeclarations {
-    for usage in allUsages where declaration.usr == usage.usr || declaration.typeUSR == usage.typeUSR {
+    for usage in allUsages where declaration.usr == usage.usr || declaration.isType && declaration.typeUSR == usage.typeUSR {
         continue outerLoop
     }
 

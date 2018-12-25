@@ -42,6 +42,7 @@ public struct File {
                 declarations.insert(Declaration(
                     usr: String(usr),
                     typeUSR: String(typeUSR),
+                    isType: token.type == SyntaxKind.typeidentifier.rawValue,
                     name: name,
                     file: path,
                     line: line,
@@ -92,6 +93,7 @@ public struct File {
 public struct Declaration: Hashable {
     public let usr: String
     public let typeUSR: String
+    public let isType: Bool
     public let name: String
     public let file: String
     public let line: Int
