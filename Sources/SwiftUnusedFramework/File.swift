@@ -26,10 +26,10 @@ public struct File {
             }
 
             guard
-                let kind = cursorInfo.kind,
-                let name = cursorInfo.name,
-                let usr = cursorInfo.usr?.split(separator: "_").first,
-                let typeUSR = cursorInfo.typeUSR?.split(separator: "_").first,
+                let kind: String = cursorInfo[.kind],
+                let name: String = cursorInfo[.name],
+                let usr = trimUSR(cursorInfo[.usr]),
+                let typeUSR = trimUSR(cursorInfo[.typeUSR]),
                 let (line, column) = (file.contents as NSString).lineAndCharacter(forByteOffset: token.offset)
             else {
                 continue
@@ -79,7 +79,7 @@ public struct File {
 
     private func isDeclarationProcessable(_ cursorInfo: [String: SourceKitRepresentable], protocols: Set<String>) -> Bool {
         // skip outlets, actions, overrides, public & open declarations
-        if let fullyAnnotatedDeclaration = cursorInfo.fullyAnnotatedDeclaration,
+        if let fullyAnnotatedDeclaration: String = cursorInfo[.fullyAnnotatedDeclaration],
             [
                 "<syntaxtype.attribute.name>@IBOutlet</syntaxtype.attribute.name>",
                 "<syntaxtype.attribute.name>@IBAction</syntaxtype.attribute.name>",
@@ -92,8 +92,8 @@ public struct File {
         }
 
         // skip protocol members
-        if let name = cursorInfo.name, !protocols.contains(name) {
-            for `protocol` in protocols where isProtocolMemberUSR(cursorInfo.usr, protocol: `protocol`) {
+        if let name: String = cursorInfo[.name], !protocols.contains(name) {
+            for `protocol` in protocols where isProtocolMemberUSR(cursorInfo[.usr], protocol: `protocol`) {
                 return false
             }
         }
@@ -104,7 +104,16 @@ public struct File {
     }
 
     private func isProtocolMemberUSR(_ usr: String?, protocol: String) -> Bool {
-        return usr?.range(of: "\\d\(`protocol`)P\\d", options: .regularExpression) != nil
+        let length = `protocol`.count
+        return usr?.range(of: "\\D\(length)\(`protocol`)P", options: .regularExpression) != nil
+    }
+
+    private func trimUSR(_ usr: String?) -> String? {
+        guard let splitUSR = usr?.split(separator: "_").first else {
+            return usr
+        }
+
+        return splitUSR.replacingOccurrences(of: "\\d+$", with: "", options: .regularExpression)
     }
 }
 
@@ -133,7 +142,7 @@ public struct Usage: Hashable {
 }
 
 private extension Dictionary where Key == String, Value == SourceKitRepresentable {
-    private enum CursorInfoKey: String {
+    enum CursorInfoKey: String {
         case kind = "key.kind"
         case name = "key.name"
         case usr = "key.usr"
@@ -141,23 +150,7 @@ private extension Dictionary where Key == String, Value == SourceKitRepresentabl
         case fullyAnnotatedDeclaration = "key.fully_annotated_decl"
     }
 
-    var kind: String? {
-        return self[CursorInfoKey.kind.rawValue] as? String
-    }
-
-    var name: String? {
-        return self[CursorInfoKey.name.rawValue] as? String
-    }
-
-    var usr: String? {
-        return self[CursorInfoKey.usr.rawValue] as? String
-    }
-
-    var typeUSR: String? {
-        return self[CursorInfoKey.typeUSR.rawValue] as? String
-    }
-
-    var fullyAnnotatedDeclaration: String? {
-        return self[CursorInfoKey.fullyAnnotatedDeclaration.rawValue] as? String
+    subscript<T>(key: CursorInfoKey) -> T? {
+        return self[key.rawValue] as? T
     }
 }
