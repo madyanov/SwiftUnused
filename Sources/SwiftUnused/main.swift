@@ -49,14 +49,14 @@ for path in paths {
     print("Processing file \(path)... ", terminator: "")
     fflush(stdout)
 
-    guard let swiftUnused = SwiftUnused(path: path, arguments: arguments + paths) else {
+    guard let file = File(path: path, arguments: arguments + paths) else {
         print("error")
         continue
     }
 
     print("done")
 
-    let (declarations, usages) = swiftUnused.declarationsAndUsages
+    let (declarations, usages) = file.declarationsAndUsages
     allDeclarations = allDeclarations.union(declarations)
     allUsages = allUsages.union(usages)
 }

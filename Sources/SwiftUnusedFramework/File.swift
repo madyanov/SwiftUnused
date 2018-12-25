@@ -8,7 +8,9 @@
 import Foundation
 import SourceKittenFramework
 
-public struct SwiftUnused {
+private typealias SourceKittenFile = SourceKittenFramework.File
+
+public struct File {
     public var declarationsAndUsages: (declarations: Set<Declaration>, usages: Set<Usage>) {
         var declarations = Set<Declaration>()
         var usages = Set<Usage>()
@@ -55,11 +57,11 @@ public struct SwiftUnused {
 
     private let path: String
     private let arguments: [String]
-    private let file: File
+    private let file: SourceKittenFile
     private let syntaxMap: SyntaxMap
 
     public init?(path: String, arguments: [String]) {
-        guard let file = File(path: path), let syntaxMap = try? SyntaxMap(file: file) else {
+        guard let file = SourceKittenFile(path: path), let syntaxMap = try? SyntaxMap(file: file) else {
             return nil
         }
 
