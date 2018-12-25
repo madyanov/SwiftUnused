@@ -99,6 +99,10 @@ public struct Declaration: Hashable {
         hasher.combine(usr)
         hasher.combine(typeUSR)
     }
+
+    public static func == (left: Declaration, right: Declaration) -> Bool {
+        return left.usr == right.usr && left.typeUSR == right.typeUSR
+    }
 }
 
 public struct Usage: Hashable {
